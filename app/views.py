@@ -2,6 +2,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from .models import Post,Profile
 from .forms import PostForm,UserLoginForm,UserRegisterForm
+from django.core.mail import send_mail
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth import(
     authenticate,
     logout,
@@ -49,7 +52,7 @@ def register_view(request):
 
 
 
-
+@login_required
 def create_post(request):
     if request.method == 'POST':
         form = PostForm(request.POST, request.FILES)
@@ -57,12 +60,17 @@ def create_post(request):
             post = form.save(commit=False)
             post.user = request.user
             post.save()
+
+            subject = 'New Post Created'
+            message = f'A new post "{post.caption},{post.content}" has been created.'
+            send_mail(subject, message, settings.EMAIL_HOST_USER, [settings.EMAIL_HOST_USER])
+
             return redirect('home')
     else:
         form = PostForm()
     return render(request, 'app/create_post.html', {'form': form})
 
-
+@login_required
 def update_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     if request.method == 'POST':
@@ -73,7 +81,7 @@ def update_post(request, post_id):
     else:
         form = PostForm(instance=post)
     return render(request, 'app/update_post.html', {'form': form,})
-
+@login_required
 def delete_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     if request.method == 'POST':
@@ -81,14 +89,13 @@ def delete_post(request, post_id):
         return redirect('home')
     return render(request, 'app/delete_post.html', {'post': post})
 
-
 def all_posts(request):
     posts = Post.objects.all()
     context = {
         'posts': posts
     }
     return render(request, 'app/all_posts.html', context)
-
+@login_required
 def post_details(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     return render(request, 'app/post_details.html', {'post': post})
